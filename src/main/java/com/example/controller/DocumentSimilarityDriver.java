@@ -41,9 +41,16 @@ public class DocumentSimilarityDriver {
         }
 
         Configuration conf = new Configuration();
-        // TODO: configure the job — see the class comment above and Controller.java from L4.
+        conf.set("mapreduce.output.textoutputformat.separator", " ");
         Job job = Job.getInstance(conf, "document similarity");
-
+        job.setJarByClass(DocumentSimilarityDriver.class);
+        job.setMapperClass(DocumentSimilarityMapper.class);
+        job.setReducerClass(DocumentSimilarityReducer.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(Text.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+        job.setNumReduceTasks(1);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);

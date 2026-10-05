@@ -1,6 +1,13 @@
 package com.example;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -27,14 +34,43 @@ import org.apache.hadoop.mapreduce.Reducer;
  */
 public class DocumentSimilarityReducer extends Reducer<Text, Text, Text, Text> {
 
+    private final Map<String, Set<String>> allDocs = new TreeMap<>();
+
     @Override
     protected void reduce(Text key, Iterable<Text> values, Context context)
             throws IOException, InterruptedException {
-        // TODO
+        Set<String> docWords = new TreeSet<>();
+        for (Text value : values) {
+            for (String token : value.toString().split("\\s+")) {
+                if (!token.isEmpty()) {
+                    docWords.add(token);
+                }
+            }
+        }
+        allDocs.put(key.toString(), docWords);
+
     }
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
-        // TODO (only needed if your design compares documents here)
+        List<String> docIds = new ArrayList<>(allDocs.keySet());
+
+        for (int i = 0; i < docIds.size(); i++) {
+            for (int j = i + 1; j < docIds.size(); j++) {
+                String leftDoc = docIds.get(i);
+                String rightDoc = docIds.get(j);
+                Set<String> leftWords = allDocs.get(leftDoc);
+                Set<String> rightWords = allDocs.get(rightDoc);
+                Set<String> shared = new TreeSet<>(leftWords);
+                shared.retainAll(rightWords);
+                if (shared.isEmpty()) {continue;}
+                Set<String> union = new TreeSet<>(leftWords);
+                union.addAll(rightWords);
+                double similarity = shared.size() / (double) union.size();
+                String pair = leftDoc + ", " + rightDoc;
+                String output = "Similarity: " + String.format(Locale.US, "%.2f", similarity);
+                context.write(new Text(pair), new Text(output));
+            }
+        }
     }
 }
